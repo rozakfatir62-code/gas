@@ -195,7 +195,7 @@ void sendToWorker(float bacValue, int rawValue) {
   // Buat payload JSON
   // Format yang diterima Worker: { "bac": 0.05 }
   StaticJsonDocument<128> doc;
-  doc["bac"]       = round(bacValue * 1000.0f) / 1000.0f; // 3 desimal
+  doc["bac"]       = round(bacValue * 10000.0f) / 1000.0f; // 3 desimal
   doc["raw"]       = rawValue;
   doc["status"]    = g_statusText;
 
@@ -264,7 +264,7 @@ void updateDisplay() {
   // === BARIS 1: Judul ===
   display.setTextSize(1);
   display.setCursor(0, 0);
-  display.println("-- GASMANIA MONITOR --");
+  display.println("- GASMANIA MONITOR -");
 
   // === BARIS 2-3: Nilai BAC Besar ===
   display.setTextSize(2);
