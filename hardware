@@ -49,7 +49,7 @@ const char* WORKER_URL    = "https://gas-three-rust.vercel.app/api/sensor";
 #define ADC_MAX         4095     // Resolusi ADC ESP32 (12-bit)
 #define VCC             3.3f     // Tegangan referensi ADC
 #define RL_VALUE        10.0f    // Nilai resistor Load (kΩ) pada modul MQ-3
-#define RO_CLEAN_AIR    60.0f    // Nilai R0 di udara bersih (perlu kalibrasi!)
+#define RO_CLEAN_AIR    12.51f    // Nilai R0 di udara bersih (perlu kalibrasi!)
 
 // Interval pengiriman data ke server (ms)
 #define SEND_INTERVAL_MS  2000  // Kirim setiap 2 detik
