@@ -17,7 +17,7 @@
 // Kredensial proyek Supabase Anda
 // ============================================================
 const SUPABASE_URL = 'https://uwiirlygxqstclohfzch.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_Q1Ts0d1EezSgblP_hf1DBw_6wmUEkqC';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3aWlybHlneHFzdGNsb2hmemNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0MDAyOTAsImV4cCI6MjA5NTk3NjI5MH0.ZwXaqS0_1LElYYEFHEnL1ElapdV6VdzIUIMnOujBf0E';
 let supabaseClient = null;
 
 try {
@@ -488,15 +488,10 @@ const DashboardController = {
 
     if (!valueEl || !progressEl || !thumbEl) return;
 
-    valueEl.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
-    valueEl.style.opacity = '0.3';
-    valueEl.style.transform = 'scale(0.95)';
-
-    setTimeout(() => {
-      valueEl.textContent = bac.toFixed(2);
-      valueEl.style.opacity = '1';
-      valueEl.style.transform = 'scale(1)';
-    }, 50);
+    valueEl.style.transition = 'none';
+    valueEl.style.opacity = '1';
+    valueEl.style.transform = 'scale(1)';
+    valueEl.textContent = bac.toFixed(2);
 
     const maxDash = 188.5;
     const maxBac = 0.40;
@@ -525,18 +520,15 @@ const DashboardController = {
       avgEl.textContent = `${avgBac.toFixed(2)}% BAC`;
     }
 
-   if (updateEl) {
-  updateEl.textContent = 'Baru saja';
-  updateEl.style.opacity = '1';
+    if (updateEl) {
+      updateEl.style.transition = 'none';
+      updateEl.style.opacity = '1';
+      updateEl.textContent = 'Baru saja';
 
       if (this._updateTimeTimeout) clearTimeout(this._updateTimeTimeout);
       this._updateTimeTimeout = setTimeout(() => {
         if (updateEl.textContent === 'Baru saja') {
-          updateEl.style.opacity = '0';
-          setTimeout(() => {
-            updateEl.textContent = '2 detik lalu';
-            updateEl.style.opacity = '1';
-          }, 200);
+          updateEl.textContent = '2 detik lalu';
         }
       }, 2000);
     }

@@ -27,11 +27,11 @@
 // ============================================================
 // KONFIGURASI — Ganti sesuai milik Anda
 // ============================================================
-const char* WIFI_SSID     = "NAMA_WIFI_ANDA";
-const char* WIFI_PASSWORD = "PASSWORD_WIFI_ANDA";
+const char* WIFI_SSID     = "SAMSUNG";
+const char* WIFI_PASSWORD = "12345678";
 
-// URL endpoint Cloudflare Worker Anda
-const char* WORKER_URL    = "https://gasmania.NAMA_ANDA.workers.dev/api/sensor";
+// URL endpoint Cloudflare Worker ndAa
+const char* WORKER_URL    = "https://gas-three-rust.vercel.app/api/sensor/";
 
 // ============================================================
 // KONFIGURASI HARDWARE
@@ -51,7 +51,7 @@ const char* WORKER_URL    = "https://gasmania.NAMA_ANDA.workers.dev/api/sensor";
 #define RO_CLEAN_AIR    60.0f    // Nilai R0 di udara bersih (perlu kalibrasi!)
 
 // Interval pengiriman data ke server (ms)
-#define SEND_INTERVAL_MS  5000  // Kirim setiap 5 detik
+#define SEND_INTERVAL_MS  2000  // Kirim setiap 2 detik
 
 // ============================================================
 // INISIALISASI OBJEK
