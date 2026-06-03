@@ -27,11 +27,11 @@
 // ============================================================
 // KONFIGURASI — Ganti sesuai milik Anda
 // ============================================================
-const char* WIFI_SSID     = "SAMSUNG";
-const char* WIFI_PASSWORD = "12345678";
+const char* WIFI_SSID     = "NAMA_WIFI_ANDA";
+const char* WIFI_PASSWORD = "PASSWORD_WIFI_ANDA";
 
-// URL endpoint Cloudflare Worker ndAa
-const char* WORKER_URL    = "https://gas-three-rust.vercel.app/api/sensor/";
+// URL endpoint Cloudflare Worker Anda
+const char* WORKER_URL    = "https://gasmania.NAMA_ANDA.workers.dev/api/sensor";
 
 // ============================================================
 // KONFIGURASI HARDWARE
@@ -176,8 +176,8 @@ void readAndUpdateSensor() {
     g_statusText = "AMAN";
   }
 
-  Serial.printf("[Sensor] Raw ADC: %.0f | Voltage: %.3fV | Rs: %.2fkΩ | Ratio: %.4f | BAC: %.3f%% | Status: %s\n",
-                rawAvg, voltage, rs, ratio, bac, g_statusText.c_str());
+  Serial.printf("[Sensor] Raw ADC: %.0f | Voltage: %.3fV | Rs: %.2fkΩ | Ratio: %.4f | BAC: %.2f%% | Status: %s\n",
+                rawAvg, voltage, rs, ratio, bac * 10.0f, g_statusText.c_str());
 }
 
 
@@ -185,7 +185,7 @@ void readAndUpdateSensor() {
 // FUNGSI: Kirim Data ke Cloudflare Worker
 // ============================================================
 void sendToWorker(float bacValue, int rawValue) {
-  Serial.printf("[HTTP] Mengirim data → BAC: %.3f%%\n", bacValue);
+  Serial.printf("[HTTP] Mengirim data → BAC: %.2f%%\n", bacValue * 10.0f);
 
   HTTPClient http;
   http.begin(WORKER_URL);
@@ -195,7 +195,7 @@ void sendToWorker(float bacValue, int rawValue) {
   // Buat payload JSON
   // Format yang diterima Worker: { "bac": 0.05 }
   StaticJsonDocument<128> doc;
-  doc["bac"]       = round(bacValue * 10000.0f) / 1000.0f; // 3 desimal
+  doc["bac"]       = round(bacValue * 10000.0f) / 1000.0f; // dikali 10, 3 desimal
   doc["raw"]       = rawValue;
   doc["status"]    = g_statusText;
 
@@ -264,13 +264,13 @@ void updateDisplay() {
   // === BARIS 1: Judul ===
   display.setTextSize(1);
   display.setCursor(0, 0);
-  display.println("- GASMANIA MONITOR -");
+  display.println("-- GASMANIA MONITOR --");
 
   // === BARIS 2-3: Nilai BAC Besar ===
   display.setTextSize(2);
   display.setCursor(10, 14);
   char bacStr[12];
-  sprintf(bacStr, "%.3f%%", g_bacValue);
+  sprintf(bacStr, "%.2f%%", g_bacValue * 10.0f);
   display.print(bacStr);
   display.setTextSize(1);
   display.setCursor(95, 20);

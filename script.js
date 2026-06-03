@@ -441,7 +441,7 @@ const DashboardController = {
     console.log('[Simulation] Memulai simulasi sensor (BAC random)...');
 
     const update = () => {
-      const currentBac = parseFloat((Math.random() * 0.16).toFixed(2));
+      const currentBac = parseFloat((Math.random() * 1.6).toFixed(2));
       const statusObj = this._getBacStatus(currentBac);
       const now = new Date();
       const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
