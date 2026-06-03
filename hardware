@@ -23,6 +23,7 @@
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <EEPROM.h>
 
 // ============================================================
 // KONFIGURASI — Ganti sesuai milik Anda
@@ -54,19 +55,179 @@ const char* WORKER_URL    = "https://gas-three-rust.vercel.app/api/sensor";
 #define SEND_INTERVAL_MS  2000  // Kirim setiap 2 detik
 
 // ============================================================
+// KONFIGURASI KALIBRASI & EEPROM
+// ============================================================
+#define EEPROM_SIZE         16
+#define EEPROM_ADDR_FACTOR  0     // Alamat EEPROM untuk faktor koreksi (float, 4 byte)
+#define EEPROM_ADDR_VALID   4     // Alamat flag validasi (1 byte) — nilai 0xAB = sudah dikalibrasi
+#define EEPROM_VALID_FLAG   0xAB
+#define KALIBASI_TRIGGER    'K'   // Ketik 'K' di Serial Monitor untuk mulai kalibrasi
+
+// ============================================================
 // INISIALISASI OBJEK
 // ============================================================
 Adafruit_SSD1306 display(OLED_WIDTH, OLED_HEIGHT, &Wire, OLED_RESET);
 
 // Variabel global
-float g_bacValue      = 0.0f;
-float g_rawAnalog     = 0;
-String g_statusText   = "Inisialisasi";
-String g_wifiStatus   = "Menghubungkan...";
-bool g_isConnected    = false;
+float g_bacValue        = 0.0f;
+float g_rawAnalog       = 0;
+String g_statusText     = "Inisialisasi";
+String g_wifiStatus     = "Menghubungkan...";
+bool g_isConnected      = false;
 unsigned long g_lastSendTime = 0;
-int g_sendCount       = 0;
-bool g_lastSendOk     = false;
+int g_sendCount         = 0;
+bool g_lastSendOk       = false;
+float g_faktorKoreksi   = 1.0f;   // Default: tidak ada koreksi
+bool g_sudahKalibrasi   = false;
+
+
+// ============================================================
+// FUNGSI: Baca & Simpan Faktor Koreksi dari EEPROM
+// ============================================================
+void loadFaktorKoreksi() {
+  EEPROM.begin(EEPROM_SIZE);
+  uint8_t flag = EEPROM.read(EEPROM_ADDR_VALID);
+
+  if (flag == EEPROM_VALID_FLAG) {
+    EEPROM.get(EEPROM_ADDR_FACTOR, g_faktorKoreksi);
+    g_sudahKalibrasi = true;
+    Serial.printf("[EEPROM] ✅ Faktor koreksi ditemukan: %.4f\n", g_faktorKoreksi);
+  } else {
+    g_faktorKoreksi = 1.0f;
+    g_sudahKalibrasi = false;
+    Serial.println("[EEPROM] ⚠️  Belum dikalibrasi. Pakai faktor default = 1.0");
+  }
+}
+
+void saveFaktorKoreksi(float faktor) {
+  EEPROM.begin(EEPROM_SIZE);
+  EEPROM.put(EEPROM_ADDR_FACTOR, faktor);
+  EEPROM.write(EEPROM_ADDR_VALID, EEPROM_VALID_FLAG);
+  EEPROM.commit();
+  Serial.printf("[EEPROM] 💾 Faktor koreksi disimpan: %.4f\n", faktor);
+}
+
+
+// ============================================================
+// FUNGSI: Proses Kalibrasi via Serial Monitor
+// ============================================================
+void prosesKalibrasi() {
+  Serial.println("\n============================================");
+  Serial.println("       MODE KALIBRASI SENSOR MQ-3");
+  Serial.println("============================================");
+  Serial.println("1. Pastikan sensor sudah warm-up minimal 5 menit");
+  Serial.println("2. Tiup napas ke sensor DAN alat pembanding");
+  Serial.println("3. Tunggu nilai sensor stabil di bawah ini:");
+  Serial.println("--------------------------------------------");
+
+  // Tampilkan nilai sensor live selama 10 detik
+  Serial.println("Nilai sensor saat ini (10 detik):");
+  for (int i = 0; i < 20; i++) {
+    readAndUpdateSensor();
+    Serial.printf("  → BAC sensor: %.2f%%\n", g_bacValue * 10.0f);
+
+    // Tampilkan di OLED mode kalibrasi
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.setCursor(0, 0);
+    display.println("== KALIBRASI MODE ==");
+    display.setCursor(0, 16);
+    display.println("Tiup sensor & alat");
+    display.setCursor(0, 28);
+    display.println("pembanding sekarang!");
+    display.setCursor(0, 44);
+    display.print("Sensor: ");
+    char buf[12];
+    sprintf(buf, "%.2f%%", g_bacValue * 10.0f);
+    display.println(buf);
+    display.display();
+
+    delay(500);
+  }
+
+  Serial.println("--------------------------------------------");
+  Serial.println("Ketik nilai dari ALAT PEMBANDING (contoh: 0.05)");
+  Serial.println("lalu tekan Enter:");
+
+  // Tunggu input dari Serial Monitor
+  String inputStr = "";
+  unsigned long startWait = millis();
+
+  while (millis() - startWait < 30000) { // Tunggu max 30 detik
+    if (Serial.available()) {
+      char c = Serial.read();
+      if (c == '\n' || c == '\r') {
+        if (inputStr.length() > 0) break;
+      } else {
+        inputStr += c;
+      }
+    }
+  }
+
+  if (inputStr.length() == 0) {
+    Serial.println("[Kalibrasi] ❌ Timeout. Kalibrasi dibatalkan.");
+    return;
+  }
+
+  float nilaiPembanding = inputStr.toFloat();
+
+  if (nilaiPembanding <= 0.0f || nilaiPembanding > 0.40f) {
+    Serial.printf("[Kalibrasi] ❌ Nilai tidak valid: %.3f. Harus antara 0.001 – 0.40\n", nilaiPembanding);
+    return;
+  }
+
+  // Baca nilai sensor saat ini (rata-rata 5 kali)
+  float totalBac = 0;
+  for (int i = 0; i < 5; i++) {
+    readAndUpdateSensor();
+    totalBac += g_bacValue;
+    delay(200);
+  }
+  float nilaiSensor = totalBac / 5.0f;
+
+  if (nilaiSensor <= 0.0f) {
+    Serial.println("[Kalibrasi] ❌ Nilai sensor 0. Pastikan sensor terkena gas saat kalibrasi.");
+    return;
+  }
+
+  // Hitung faktor koreksi
+  float faktorBaru = nilaiPembanding / nilaiSensor;
+
+  Serial.println("\n============================================");
+  Serial.printf("  Nilai alat pembanding : %.3f%%\n", nilaiPembanding * 10.0f);
+  Serial.printf("  Nilai sensor (raw)     : %.3f%%\n", nilaiSensor * 10.0f);
+  Serial.printf("  Faktor koreksi baru    : %.4f\n", faktorBaru);
+  Serial.println("============================================");
+
+  // Simpan ke EEPROM
+  saveFaktorKoreksi(faktorBaru);
+  g_faktorKoreksi   = faktorBaru;
+  g_sudahKalibrasi  = true;
+
+  Serial.println("[Kalibrasi] ✅ Kalibrasi berhasil! Faktor disimpan permanen.");
+  Serial.println("[Kalibrasi] ESP32 akan lanjut monitoring dengan faktor baru.\n");
+
+  // Tampilkan hasil di OLED
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setCursor(0, 0);
+  display.println("KALIBRASI BERHASIL!");
+  display.setCursor(0, 16);
+  display.print("Faktor: ");
+  char buf[16];
+  sprintf(buf, "%.4f", faktorBaru);
+  display.println(buf);
+  display.setCursor(0, 32);
+  display.print("Ref  : ");
+  sprintf(buf, "%.2f%%", nilaiPembanding * 10.0f);
+  display.println(buf);
+  display.setCursor(0, 44);
+  display.print("Sensor: ");
+  sprintf(buf, "%.2f%%", nilaiSensor * 10.0f);
+  display.println(buf);
+  display.display();
+  delay(3000);
+}
 
 
 // ============================================================
@@ -77,6 +238,9 @@ void setup() {
   Serial.println("\n\n==============================");
   Serial.println("  GASMANIA ESP32 Firmware v1.0");
   Serial.println("==============================");
+
+  // --- Load faktor kalibrasi dari EEPROM ---
+  loadFaktorKoreksi();
 
   // --- Inisialisasi OLED ---
   initDisplay();
@@ -94,7 +258,8 @@ void setup() {
   // --- Baca pertama kali ---
   readAndUpdateSensor();
 
-  Serial.println("[Setup] Siap! Mulai monitoring...\n");
+  Serial.println("[Setup] Siap! Mulai monitoring...");
+  Serial.println("[Setup] Ketik 'K' + Enter di Serial Monitor untuk memulai kalibrasi.\n");
 }
 
 
@@ -103,6 +268,14 @@ void setup() {
 // ============================================================
 void loop() {
   unsigned long now = millis();
+
+  // Cek input Serial — jika ketik 'K' maka mulai kalibrasi
+  if (Serial.available()) {
+    char input = Serial.read();
+    if (input == KALIBASI_TRIGGER || input == 'k') {
+      prosesKalibrasi();
+    }
+  }
 
   // 1. Selalu baca sensor setiap loop
   readAndUpdateSensor();
@@ -157,11 +330,12 @@ void readAndUpdateSensor() {
   float ratio = rs / RO_CLEAN_AIR;
 
   // Kurva karakteristik MQ-3 (pendekatan log-linear)
-  // BAC (%) ≈ a * ratio^b  →  log(BAC) = log(a) + b*log(ratio)
-  // Konstanta empiris untuk MQ-3 (dapat dikalibrasi ulang):
   float a = 0.4f;
   float b = -1.431f;
   float bac = a * pow(ratio, b);
+
+  // Terapkan faktor koreksi dari kalibrasi
+  bac = bac * g_faktorKoreksi;
 
   // Clamp nilai BAC ke range logis 0.00 – 0.40%
   bac = constrain(bac, 0.0f, 0.40f);
@@ -228,7 +402,6 @@ void sendToWorker(float bacValue, int rawValue) {
 void initDisplay() {
   if (!display.begin(SSD1306_SWITCHCAPVCC, OLED_I2C_ADDR)) {
     Serial.println("[OLED] ❌ GAGAL! Periksa wiring I2C.");
-    // Lanjut meski OLED gagal, tetap kirim data ke server
     return;
   }
   display.clearDisplay();
@@ -264,7 +437,13 @@ void updateDisplay() {
   // === BARIS 1: Judul ===
   display.setTextSize(1);
   display.setCursor(0, 0);
-  display.println("-- GASMANIA MONITOR --");
+
+  // Tampilkan tanda sudah kalibrasi atau belum
+  if (g_sudahKalibrasi) {
+    display.println("-- GASMANIA [CAL] --");
+  } else {
+    display.println("-- GASMANIA MONITOR --");
+  }
 
   // === BARIS 2-3: Nilai BAC Besar ===
   display.setTextSize(2);
