@@ -17,7 +17,7 @@
 // Kredensial proyek Supabase Anda
 // ============================================================
 const SUPABASE_URL = 'https://uwiirlygxqstclohfzch.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3aWlybHlneHFzdGNsb2hmemNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0MDAyOTAsImV4cCI6MjA5NTk3NjI5MH0.ZwXaqS0_1LElYYEFHEnL1ElapdV6VdzIUIMnOujBf0E';
+const SUPABASE_ANON_KEY = 'sb_publishable_Q1Ts0d1EezSgblP_hf1DBw_6wmUEkqC';
 let supabaseClient = null;
 
 try {
@@ -496,7 +496,7 @@ const DashboardController = {
       valueEl.textContent = bac.toFixed(2);
       valueEl.style.opacity = '1';
       valueEl.style.transform = 'scale(1)';
-    }, 150);
+    }, 50);
 
     const maxDash = 188.5;
     const maxBac = 0.40;
@@ -525,14 +525,9 @@ const DashboardController = {
       avgEl.textContent = `${avgBac.toFixed(2)}% BAC`;
     }
 
-    if (updateEl) {
-      updateEl.style.transition = 'opacity 0.2s ease';
-      updateEl.style.opacity = '0';
-
-      setTimeout(() => {
-        updateEl.textContent = 'Baru saja';
-        updateEl.style.opacity = '1';
-      }, 200);
+   if (updateEl) {
+  updateEl.textContent = 'Baru saja';
+  updateEl.style.opacity = '1';
 
       if (this._updateTimeTimeout) clearTimeout(this._updateTimeTimeout);
       this._updateTimeTimeout = setTimeout(() => {
