@@ -17,7 +17,7 @@
 // Kredensial proyek Supabase Anda
 // ============================================================
 const SUPABASE_URL = 'https://uwiirlygxqstclohfzch.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3aWlybHlneHFzdGNsb2hmemNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0MDAyOTAsImV4cCI6MjA5NTk3NjI5MH0.ZwXaqS0_1LElYYEFHEnL1ElapdV6VdzIUIMnOujBf0E';
+const SUPABASE_ANON_KEY = 'sb_publishable_Q1Ts0d1EezSgblP_hf1DBw_6wmUEkqC';
 let supabaseClient = null;
 
 try {
