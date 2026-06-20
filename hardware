@@ -115,9 +115,9 @@ String getBACFromPPM(float ppm) {
     return "0.12 mg/L";
   } else if (ppm >= 0.7980f && ppm <= 0.9875f) {
     return "0.13 mg/L";
-  } else if (ppm >= 0.9875f && ppm <= 1.6875f) {
+  } else if (ppm >= 0.9875f && ppm <= 1.3875f) {
     return "0.14 mg/L";
-  } else if (ppm > 1.6875f) {
+  } else if (ppm > 1.3875f) {
     return "0.15 mg/L";
   } else {
     return "0.00 mg/L";
