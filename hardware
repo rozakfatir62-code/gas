@@ -28,28 +28,28 @@
 // ============================================================
 // KONFIGURASI WiFi & Server
 // ============================================================
-const char* WIFI_SSID     = "Ftr";
+const char* WIFI_SSID = "Ftr";
 const char* WIFI_PASSWORD = "12345678";
-const char* WORKER_URL    = "https://gas-swart.vercel.app/api/sensor";
+const char* WORKER_URL = "https://gas-swart.vercel.app/api/sensor";
 
 // ============================================================
 // KONFIGURASI OLED
 // ============================================================
-#define OLED_WIDTH     128
-#define OLED_HEIGHT    64
-#define OLED_RESET     -1
-#define OLED_I2C_ADDR  0x3C
+#define OLED_WIDTH 128
+#define OLED_HEIGHT 64
+#define OLED_RESET -1
+#define OLED_I2C_ADDR 0x3C
 
 // ============================================================
 // KONFIGURASI SENSOR — SAMA PERSIS DENGAN KODE PERTAMA
 // ============================================================
-#define BOARD           "ESP-32"
-#define PIN_ANALOG      34
-#define TYPE            "MQ-3"
-#define VOLTAGE_RES     3.3f
-#define ADC_RESOLUTION  12
-#define R0_VALUE        13.6771f
-#define NUM_SAMPLES     20
+#define BOARD "ESP-32"
+#define PIN_ANALOG 34
+#define TYPE "MQ-3"
+#define VOLTAGE_RES 3.3f
+#define ADC_RESOLUTION 12
+#define R0_VALUE 13.6771f
+#define NUM_SAMPLES 20
 
 // ============================================================
 // INISIALISASI OBJEK
@@ -61,14 +61,27 @@ Adafruit_SSD1306 display(OLED_WIDTH, OLED_HEIGHT, &Wire, OLED_RESET);
 // VARIABEL — SAMA PERSIS DENGAN KODE PERTAMA
 // ============================================================
 float ppm_buffer[NUM_SAMPLES];
-int   buf_index = 0;
-bool  buf_full  = false;
-int   counter   = 0;
+int buf_index = 0;
+bool buf_full = false;
+int counter = 0;
 
 // Variabel tambahan untuk OLED & WiFi
-bool   g_isConnected  = false;
-int    g_sendCount    = 0;
-bool   g_lastSendOk   = false;
+bool g_isConnected = false;
+int g_sendCount = 0;
+bool g_lastSendOk = false;
+
+// ============================================================
+// VARIABEL UNTUK MODE HOLD (kunci nilai saat stabil)
+// ============================================================
+#define HOLD_DURATION_MS 3000  // 3 detik nilai stabil ditahan
+
+bool g_isHolding = false;       // true = sedang menahan nilai stabil
+unsigned long g_holdStart = 0;  // waktu mulai hold
+
+// Nilai yang dikunci selama hold
+float g_heldAdc = 0;
+float g_heldPpm = 0;
+String g_heldBac = "0.00 mg/L";
 
 
 // ============================================================
@@ -94,23 +107,25 @@ float getAverageADC() {
 String getBACFromPPM(float ppm) {
   if (ppm >= 0.0000f && ppm <= 0.1000f) {
     return "0.00 mg/L";
-  } else if (ppm > 0.3500f && ppm <= 0.4974f) {
-    return "0.09 mg/L";
-  } else if (ppm > 0.4974f && ppm <= 0.5594f) {
-    return "0.11 - 0.12 mg/L";
-  } else if (ppm >= 0.6446f && ppm <= 0.6875f) {
-    return "0.14 - 0.15 mg/L";
-  } else if (ppm > 0.6875f) {
-    return "0.15 mg/L";
+  } else if (ppm > 0.5800f && ppm <= 0.7000f) {
+    return "0.11 mg/L";
+  } else if (ppm > 0.7100f && ppm <= 0.7900f) {
+    return "0.12 mg/L";
+  } else if (ppm >= 0.8100f && ppm <= 0.9875f) {
+    return "0.13 mg/L";
+  } else if (ppm >= 1.4446f && ppm <= 1.6875f) {
+    return "0.14 mg/L";
+    } else if (ppm > 1.6875f) {
+      return "0.15 mg/L";
   } else {
     return "0.00 mg/L";
   }
 }
 
 void resetSemua() {
-  buf_full  = false;
+  buf_full = false;
   buf_index = 0;
-  counter   = 0;
+  counter = 0;
   for (int i = 0; i < NUM_SAMPLES; i++) ppm_buffer[i] = 0;
   Serial.println("-----|---------|---------|----------------------|--------");
   Serial.println("[RESET] Siap baca ulang...\n");
@@ -263,11 +278,11 @@ void sendToServer(float adc_avg, float ppm_avg, String bac, bool stabil) {
   http.setTimeout(8000);
 
   StaticJsonDocument<200> doc;
-  doc["adc"]    = adc_avg;
-  doc["ppm"]    = ppm_avg;
-  doc["bac"]    = bac;
+  doc["adc"] = adc_avg;
+  doc["ppm"] = ppm_avg;
+  doc["bac"] = bac;
   doc["stabil"] = stabil;
-  doc["count"]  = counter;
+  doc["count"] = counter;
 
   String payload;
   serializeJson(doc, payload);
@@ -308,15 +323,16 @@ void setup() {
   MQ3.setR0(R0_VALUE);
 
   // Warm-up — sama persis kode pertama
-  Serial.println("[WARM-UP] 60 detik...");
+  Serial.println("[WARM-UP] 30 detik...");
   display.clearDisplay();
   display.setTextSize(1);
   display.setCursor(0, 0);
   display.println("WARM-UP SENSOR MQ-3");
   display.display();
 
-  for (int i = 60; i > 0; i--) {
-    Serial.print(i); Serial.print(" ");
+  for (int i = 30; i > 0; i--) {
+    Serial.print(i);
+    Serial.print(" ");
     if (i % 10 == 0) Serial.println();
     display.fillRect(0, 16, 128, 10, SSD1306_BLACK);
     display.setCursor(0, 16);
@@ -335,7 +351,7 @@ void setup() {
 
 
 // ============================================================
-// LOOP — SAMA PERSIS KODE PERTAMA + update OLED & kirim HTTP
+// LOOP — MODE NORMAL + MODE HOLD (kunci nilai 3 detik saat stabil)
 // ============================================================
 void loop() {
   static unsigned long lastRead = 0;
@@ -343,6 +359,34 @@ void loop() {
 
   if (millis() - lastRead < 500) return;
   lastRead = millis();
+
+  // ------------------------------------------------------------
+  // MODE HOLD: nilai sudah dikunci, tampilkan & kirim nilai yang
+  // sama terus tanpa membaca/menghitung ulang sensor, sampai
+  // durasi HOLD_DURATION_MS habis.
+  // ------------------------------------------------------------
+  if (g_isHolding) {
+    // Tampilkan nilai yang dikunci (tidak berubah)
+    updateDisplay(g_heldAdc, g_heldPpm, g_heldBac, true);
+
+    // Kirim ulang nilai yang sama ke server tiap 500ms
+    sendToServer(g_heldAdc, g_heldPpm, g_heldBac, true);
+
+    // Cek apakah durasi hold sudah selesai
+    if (millis() - g_holdStart >= HOLD_DURATION_MS) {
+      Serial.print(">>> HOLD SELESAI. Nilai terakhir: ");
+      Serial.println(g_heldBac);
+
+      g_isHolding = false;
+      ppm_prev = -1;
+      resetSemua();  // reset buffer & tampilan kembali ke 0
+    }
+    return;  // selama hold, skip pembacaan sensor di bawah
+  }
+
+  // ------------------------------------------------------------
+  // MODE NORMAL: baca sensor seperti biasa
+  // ------------------------------------------------------------
 
   // Update PPM buffer — sama persis kode pertama
   MQ3.update();
@@ -357,10 +401,10 @@ void loop() {
 
   float ppm_avg = getAveragePPM();
   float adc_avg = getAverageADC();
-  String bac    = getBACFromPPM(ppm_avg);
+  String bac = getBACFromPPM(ppm_avg);
 
-  // Deteksi stabil — sama persis kode pertama
-  bool stabil = (ppm_prev >= 0) && (abs(ppm_avg - ppm_prev) < 0.05f);
+  // Deteksi stabil — toleransi diperbesar agar lebih realistis terhadap noise sensor
+  bool stabil = (ppm_prev >= 0) && (abs(ppm_avg - ppm_prev) < 0.08f);
   ppm_prev = ppm_avg;
 
   counter++;
@@ -380,17 +424,28 @@ void loop() {
   // Kirim ke server
   sendToServer(adc_avg, ppm_avg, bac, stabil);
 
-  // Logika BAC final — sama persis kode pertama
-  if (bac != "0.00 mg/L") {
-    delay(5000);
-    Serial.print(">>> BAC FINAL: ");
-    Serial.println(bac);
-    ppm_prev = -1;
-    resetSemua();
+  // ------------------------------------------------------------
+  // Begitu STABIL terdeteksi -> kunci nilai, masuk MODE HOLD
+  // Nilai ADC/PPM/BAC tidak berubah selama HOLD_DURATION_MS,
+  // tetap ditampilkan & dikirim berulang, lalu reset ke 0.
+  // ------------------------------------------------------------
+  if (stabil) {
+    g_heldAdc = adc_avg;
+    g_heldPpm = ppm_avg;
+    g_heldBac = bac;
+    g_isHolding = true;
+    g_holdStart = millis();
+
+    Serial.print(">>> STABIL TERKUNCI selama ");
+    Serial.print(HOLD_DURATION_MS / 1000);
+    Serial.println(" detik...");
     return;
   }
 
-  // Reset buffer — sama persis kode pertama
-  buf_full  = false;
-  buf_index = 0;
+  // Catatan: buffer TIDAK direset di sini lagi.
+  // Buffer kini bersifat sliding window — ppm_buffer terus bergeser
+  // (overwrite melingkar via buf_index), sehingga ppm_avg dihitung dari
+  // 20 sampel TERBARU setiap loop, bukan dari batch yang dikosongkan ulang.
+  // Ini membuat rata-rata lebih halus & status STABIL lebih cepat tercapai
+  // saat gas benar-benar sudah landai.
 }
