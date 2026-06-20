@@ -107,7 +107,7 @@ float getAverageADC() {
 String getBACFromPPM(float ppm) {
   if (ppm >= 0.0000f && ppm <= 0.1000f) {
     return "0.00 mg/L";
-  } else if (ppm > 0.5800f && ppm <= 0.7000f) {
+  } else if (ppm > 0.4300f && ppm <= 0.7000f) {
     return "0.11 mg/L";
   } else if (ppm > 0.7100f && ppm <= 0.7900f) {
     return "0.12 mg/L";
