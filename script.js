@@ -626,9 +626,10 @@ const DataPageController = {
       alert("Tidak ada data untuk diekspor.");
       return;
     }
-    let csvContent = "data:text/csv;charset=utf-8,Waktu,BAC (%),Status\n";
+    let csvContent = "data:text/csv;charset=utf-8,Waktu;BAC (%);Status\n";
     data.forEach(row => {
-      csvContent += `${row.time},${row.bac},${row.status}\n`;
+      const bacStr = row.bac.toFixed(2).replace('.', ',');
+      csvContent += `${row.time};${bacStr};${row.status}\n`;
     });
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
