@@ -32,7 +32,7 @@ const char* WIFI_SSID     = "Ftr";
 const char* WIFI_PASSWORD = "12345678";
 
 // URL endpoint Cloudflare Worker Anda
-const char* WORKER_URL    = "https://gas-three-rust.vercel.app/api/sensor";
+const char* WORKER_URL    = "https://gas-swart.vercel.app/api/sensor";
 
 // ============================================================
 // KONFIGURASI HARDWARE
