@@ -16,9 +16,14 @@
 // SUPABASE CLIENT CONFIGURATION
 // Kredensial proyek Supabase Anda
 // ============================================================
+// const SUPABASE_URL = 'https://uwiirlygxqstclohfzch.supabase.co';
+// const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3aWlybHlneHFzdGNsb2hmemNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0MDAyOTAsImV4cCI6MjA5NTk3NjI5MH0.ZwXaqS0_1LElYYEFHEnL1ElapdV6VdzIUIMnOujBf0E';
+// let supabaseClient = null;
 const SUPABASE_URL = 'https://uwiirlygxqstclohfzch.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_Q1Ts0d1EezSgblP_hf1DBw_6wmUEkqC';
+const SUPABASE_ANON_KEY = 'sb_publishable_Q1Ts0d1EezSgblP_hf1DBw_6wmUEkqCASEMBIH';
 let supabaseClient = null;
+
+
 
 try {
   // PERBAIKAN: Memastikan inisialisasi aman baik via window.supabase standar maupun modul
@@ -166,16 +171,16 @@ const FormController = {
       if (nameGroup) this._setError(nameGroup, false);
     }
 
-    // --- Umur ---
-    const ageEl = document.getElementById('input-age');
-    const ageGroup = document.getElementById('group-age');
-    const age = ageEl ? parseInt(ageEl.value, 10) : NaN;
+    // --- Nim ---
+    const nimEl = document.getElementById('input-nim');
+    const nimGroup = document.getElementById('group-nim');
+    const nim = nimEl ? nimEl.value.trim() : '';
 
-    if (isNaN(age) || age < 1 || age > 120) {
-      if (ageGroup) this._setError(ageGroup, true);
+    if (!nim || !/^[0-9]{5,20}$/.test(nim)) {
+      if (nimGroup) this._setError(nimGroup, true);
       isValid = false;
     } else {
-      if (ageGroup) this._setError(ageGroup, false);
+      if (nimGroup) this._setError(nimGroup, false);
     }
 
     // --- Jenis Kelamin ---
@@ -196,7 +201,7 @@ const FormController = {
       valid: true,
       data: {
         name,
-        age,
+        nim,
         gender: selected.value,
         createdAt: new Date().toISOString(),
       },
@@ -217,12 +222,12 @@ const FormController = {
   /** Kosongkan semua field form (dipakai saat logout) */
   reset() {
     const nameEl = document.getElementById('input-name');
-    const ageEl = document.getElementById('input-age');
+    const nimEl = document.getElementById('input-nim');
     if (nameEl) nameEl.value = '';
-    if (ageEl) ageEl.value = '';
+    if (nimEl) nimEl.value = '';
     document.querySelectorAll('input[name="gender"]').forEach(el => { el.checked = false; });
 
-    ['group-name', 'group-age', 'group-gender'].forEach(id => {
+    ['group-name', 'group-nim', 'group-gender'].forEach(id => {
       document.getElementById(id)?.classList.remove('has-error');
     });
   },
@@ -441,7 +446,7 @@ const DashboardController = {
     console.log('[Simulation] Memulai simulasi sensor (BAC random)...');
 
     const update = () => {
-      const currentBac = parseFloat((Math.random() * 1.6).toFixed(2));
+      const currentBac = parseFloat((Math.random() * 0.16).toFixed(2));
       const statusObj = this._getBacStatus(currentBac);
       const now = new Date();
       const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -488,10 +493,15 @@ const DashboardController = {
 
     if (!valueEl || !progressEl || !thumbEl) return;
 
-    valueEl.style.transition = 'none';
-    valueEl.style.opacity = '1';
-    valueEl.style.transform = 'scale(1)';
-    valueEl.textContent = bac.toFixed(2);
+    valueEl.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+    valueEl.style.opacity = '0.3';
+    valueEl.style.transform = 'scale(0.95)';
+
+    setTimeout(() => {
+      valueEl.textContent = bac.toFixed(2);
+      valueEl.style.opacity = '1';
+      valueEl.style.transform = 'scale(1)';
+    }, 150);
 
     const maxDash = 188.5;
     const maxBac = 0.40;
@@ -521,14 +531,22 @@ const DashboardController = {
     }
 
     if (updateEl) {
-      updateEl.style.transition = 'none';
-      updateEl.style.opacity = '1';
-      updateEl.textContent = 'Baru saja';
+      updateEl.style.transition = 'opacity 0.2s ease';
+      updateEl.style.opacity = '0';
+
+      setTimeout(() => {
+        updateEl.textContent = 'Baru saja';
+        updateEl.style.opacity = '1';
+      }, 200);
 
       if (this._updateTimeTimeout) clearTimeout(this._updateTimeTimeout);
       this._updateTimeTimeout = setTimeout(() => {
         if (updateEl.textContent === 'Baru saja') {
-          updateEl.textContent = '2 detik lalu';
+          updateEl.style.opacity = '0';
+          setTimeout(() => {
+            updateEl.textContent = '2 detik lalu';
+            updateEl.style.opacity = '1';
+          }, 200);
         }
       }, 2000);
     }
@@ -558,7 +576,7 @@ const DataPageController = {
     const avatar = profile.gender === 'Laki-laki' ? '👨' : (profile.gender === 'Perempuan' ? '👩' : '🧑');
     const subtitleEl = document.getElementById('data-page-subtitle');
     if (subtitleEl) {
-      subtitleEl.textContent = `${avatar} ${escapeHTML(profile.name)}, ${escapeHTML(String(profile.age))} tahun`;
+      subtitleEl.textContent = `${avatar} ${escapeHTML(profile.name)}, NIM ${escapeHTML(String(profile.nim))}`;
     }
 
     this.renderList();
@@ -734,12 +752,12 @@ const App = {
       });
     }
 
-    const inputAge = document.getElementById('input-age');
-    if (inputAge) {
-      inputAge.addEventListener('input', () => {
-        const g = document.getElementById('group-age');
-        const val = parseInt(inputAge.value, 10);
-        if (g && g.classList.contains('has-error') && val >= 1 && val <= 120) {
+    const inputNim = document.getElementById('input-nim');
+    if (inputNim) {
+      inputNim.addEventListener('input', () => {
+        const g = document.getElementById('group-nim');
+        const val = inputNim.value.trim();
+        if (g && g.classList.contains('has-error') && /^[0-9]{5,20}$/.test(val)) {
           g.classList.remove('has-error');
         }
       });
