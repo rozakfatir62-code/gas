@@ -22,9 +22,6 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 // const SUPABASE_URL = 'https://uwiirlygxqstclohfzch.supabase.co';
 // const SUPABASE_ANON_KEY = 'sb_publishable_Q1Ts0d1EezSgblP_hf1DBw_6wmUEkqCASEMBIH';
 let supabaseClient = null;
-
-
-
 try {
   // PERBAIKAN: Memastikan inisialisasi aman baik via window.supabase standar maupun modul
   const hasSupabaseLib = (typeof window.supabase !== 'undefined') || (typeof supabase !== 'undefined');
