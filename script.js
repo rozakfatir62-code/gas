@@ -622,11 +622,21 @@ const DataPageController = {
 
   exportCSV() {
     const data = DashboardController._ppmData;
+    const profile = StorageService.getProfile();
+    
     if (data.length === 0) {
       alert("Tidak ada data untuk diekspor.");
       return;
     }
-    let csvContent = "data:text/csv;charset=utf-8,Waktu;BAC (%);Status\n";
+    const userName = profile ? profile.name : "Tidak Diketahui";
+    const userNim = profile ? profile.nim : "—";
+    
+    let csvContent = "data:text/csv;charset=utf-8,";
+    csvContent += `Nama Berdasarkan Sesi;${userName}\n`;
+    csvContent += `NIM;${userNim}\n`;
+    csvContent += `Tanggal Ekspor;${new Date().toLocaleDateString('id-ID')}\n\n`; // Baris kosong pemisah
+    csvContent += "Waktu;BAC (%);Status\n"; // Header tabel data   
+    
     data.forEach(row => {
       const bacStr = row.bac.toFixed(2).replace('.', ',');
       csvContent += `${row.time};${bacStr};${row.status}\n`;
