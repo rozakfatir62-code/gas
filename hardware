@@ -393,7 +393,7 @@ void loop() {
   }
 
   // ------------------------------------------------------------
-  // MODE NORMAL: baca sensor seperti biasa
+  // PEMBACAAN SENSOR ADC > PPM > BAC
   // ------------------------------------------------------------
 
   // Update PPM buffer — sama persis kode pertama
