@@ -620,31 +620,73 @@ const DataPageController = {
     `).join('');
   },
 
-  exportCSV() {
-    const data = DashboardController._ppmData;
+  async exportCSV() {
     const profile = StorageService.getProfile();
-    
-    if (data.length === 0) {
-      alert("Tidak ada data untuk diekspor.");
-      return;
-    }
     const userName = profile ? profile.name : "Tidak Diketahui";
     const userNim = profile ? profile.nim : "—";
+    
+    let allData = [];
+
+    // Mengambil data langsung dari Supabase jika client tersedia
+    if (supabaseClient) {
+      console.log('[Export] Mengambil seluruh data dari Supabase...');
+      try {
+        const { data, error } = await supabaseClient
+          .from('alcohol_logs')
+          .select('*')
+          .order('created_at', { ascending: false }); // Urutan dari yang terbaru
+
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          allData = data.map(row => {
+            const bacVal = typeof row.bac_value === 'number' ? row.bac_value : parseFloat(row.bac_value || 0);
+            const statusObj = DashboardController._getBacStatus(bacVal);
+            const timeStr = new Date(row.created_at).toLocaleString('id-ID', {
+              day: 'numeric',
+              month: '2-digit',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit'
+            });
+            return {
+              time: timeStr,
+              bac: bacVal,
+              status: statusObj.status
+            };
+          });
+        }
+      } catch (err) {
+        console.error('[Export] Gagal mengambil data dari Supabase, fallback ke data lokal:', err);
+        // Fallback jika database error, gunakan data lokal yang ada di dashboard
+        allData = DashboardController._ppmData;
+      }
+    } else {
+      // Jika supabaseClient tidak aktif, gunakan data lokal
+      allData = DashboardController._ppmData;
+    }
+
+    if (allData.length === 0) {
+      alert("Tidak ada data di database untuk diekspor.");
+      return;
+    }
     
     let csvContent = "data:text/csv;charset=utf-8,";
     csvContent += `Nama Berdasarkan Sesi;${userName}\n`;
     csvContent += `NIM;${userNim}\n`;
-    csvContent += `Tanggal Ekspor;${new Date().toLocaleDateString('id-ID')}\n\n`; // Baris kosong pemisah
+    csvContent += `Tanggal Ekspor;${new Date().toLocaleDateString('id-ID')} ${new Date().toLocaleTimeString('id-ID')}\n\n`;
     csvContent += "Waktu;BAC (%);Status\n"; // Header tabel data   
     
-    data.forEach(row => {
+    allData.forEach(row => {
       const bacStr = row.bac.toFixed(2).replace('.', ',');
       csvContent += `${row.time};${bacStr};${row.status}\n`;
     });
+    
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "riwayat_alkohol.csv");
+    link.setAttribute("download", `riwayat_alkohol_NIM_${userNim}.csv`);
     link.style.display = 'none';
     document.body.appendChild(link);
     link.click();
@@ -738,7 +780,7 @@ const App = {
       }
 
       // Kosongkan database setelah profil tersimpan
-      await App._clearSupabaseData();
+      // await App._clearSupabaseData();
 
       setTimeout(() => {
         FormController.hide();
@@ -813,8 +855,9 @@ const App = {
     });
 
     this._bindOnce('btn-export', 'click', () => {
-      DataPageController.exportCSV();
-    });
+      setButtonLoading(document.getElementById('btn-export'), true);
+      await DataPageController.exportCSV();
+      setButtonLoading(document.getElementById('btn-export'), false);    });
   },
 
   _logout() {
