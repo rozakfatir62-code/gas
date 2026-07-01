@@ -575,11 +575,16 @@ const DataPageController = {
     }
   },
 
-  renderList() {
+renderList() {
     const container = document.getElementById('data-list-container');
     if (!container) return;
 
     const data = DashboardController._ppmData;
+    
+    // Tambahan: Ambil data nama dan NIM yang sedang aktif dari session
+    const profile = StorageService.getProfile();
+    const currentName = profile ? profile.name : 'Tanpa Nama';
+    const currentNim = profile ? profile.nim : '—';
 
     // Update count label
     const countLabel = document.getElementById('data-count-label');
@@ -600,6 +605,10 @@ const DataPageController = {
       <div class="data-item ${statusClass[item.status] || 'status--aman'}" style="animation-delay:${idx * 0.03}s;">
         <div class="data-item__icon">${statusIcon[item.status] || '🛡️'}</div>
         <div class="data-item__body">
+          <!-- Tambahan elemen informasi nama dan NIM di dalam card history -->
+          <div class="data-item__user" style="font-size: 0.8rem; font-weight: 600; opacity: 0.7; margin-bottom: 2px;">
+            ${escapeHTML(currentName)} (${escapeHTML(String(currentNim))})
+          </div>
           <div class="data-item__bac">${item.bac.toFixed(2)}% BAC</div>
           <div class="data-item__time">${item.time}</div>
         </div>
