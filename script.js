@@ -1,15 +1,3 @@
-/**
- * script.js — IoT Monitor PWA
- * Logika alur: Splash → Onboarding → Dashboard
- *
- * Arsitektur:
- * 1. SplashController — mengelola animasi dan timing splash screen
- * 2. FormController — validasi & pengambilan data form profil
- * 3. StorageService — abstraksi localStorage
- * 4. DashboardController — merender dan menginisialisasi tampilan dashboard
- * 5. App.init() — titik masuk, mengatur alur keseluruhan
- */
-
 'use strict';
 
 // ============================================================
@@ -854,7 +842,7 @@ const App = {
       }
     });
 
-    this._bindOnce('btn-export', 'click', () => {
+    this._bindOnce('btn-export', 'click', async () => {
       setButtonLoading(document.getElementById('btn-export'), true);
       await DataPageController.exportCSV();
       setButtonLoading(document.getElementById('btn-export'), false);    });
